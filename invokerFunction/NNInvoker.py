@@ -83,7 +83,7 @@ class NNInvoker(object):
             self.db[self.initnl] = nldoc
             print('done')
         else:
-            self.db = self.couchserver.create(dbname)
+            self.db = self.couchserver[dbname]
             doc1 = self.db.get(functionCount)
             print(doc1['count'])
 
@@ -103,7 +103,8 @@ class NNInvoker(object):
         NAMESPACE = os.environ.get('__OW_NAMESPACE')
         user_pass = os.environ.get('__OW_API_KEY').split(':')
         ACTION = 'digitnn'
-        PARAMS = {'layers': self.sizes, 'epochs': self.epochs, 'eta':self.eta, 'mini_batch_size': self.mini_batch_size}
+        PARAMS = {'dbname':self.dbname ,'layers': self.sizes, 'epochs': self.epochs,
+         'eta':self.eta, 'mini_batch_size': self.mini_batch_size}
         BLOCKING = 'false'
         RESULT = 'true'
         APIHOST = 'http://172.17.0.1:8888'

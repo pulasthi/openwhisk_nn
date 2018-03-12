@@ -15,10 +15,12 @@ import random
 
 # Third-party libraries
 import numpy as np
+import couchdb
+import json
 
 class Network(object):
 
-    def __init__(self, sizes):
+    def __init__(self, sizes, dbname):
         """The list ``sizes`` contains the number of neurons in the
         respective layers of the network.  For example, if the list
         was [2, 3, 1] then it would be a three-layer network, with the
@@ -31,15 +33,32 @@ class Network(object):
         ever used in computing the outputs from later layers."""
         self.num_layers = len(sizes)
         self.sizes = sizes
-        self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
-        self.weights = [np.random.randn(y, x)
-                        for x, y in zip(sizes[:-1], sizes[1:])]
+        #load data from couchdb instead of generating them
+        user = "whisk_admin"
+        password = "some_passw0rd"
+        self.couchserver = couchdb.Server("http://%s:%s@172.17.0.1:5984/" % (user, password))
+
+        self.db = self.couchserver[dbname]
+        wdoc = self.db.get('initw')
+        bdoc = self.db.get('initb')
+        self.biases = self.convertFromJSON(bdoc['b'])
+        self.weights = self.convertFromJSON(wdoc['w'])
+        #self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
+        #self.weights = [np.random.randn(y, x)
+        #                for x, y in zip(sizes[:-1], sizes[1:])]
 
     def feedforward(self, a):
         """Return the output of the network if ``a`` is input."""
         for b, w in zip(self.biases, self.weights):
             a = sigmoid(np.dot(w, a)+b)
         return a
+
+    def convertFromJSON(self, data):
+        convertedData = [];
+        for x in data:
+            convertedData.append(np.array(x))
+
+        return convertedData
 
     def SGD(self, training_data, epochs, mini_batch_size, eta,
             test_data=None):
