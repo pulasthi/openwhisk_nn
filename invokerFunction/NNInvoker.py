@@ -91,12 +91,12 @@ class NNInvoker(object):
         #this method will run all the functions
         actIds = []
         for x in range(self.parallelism):
-            actid = self.invokeNN()
+            actid = self.invokeNN(x)
             actIds.append(actid)
 
         return actIds
 
-    def invokeNN(self):
+    def invokeNN(self, rank):
         #APIHOST = subprocess.check_output("wsk property get --apihost", shell=True).split()[2]
         #AUTH_KEY = subprocess.check_output("wsk property get --auth", shell=True).split()[2]
         #NAMESPACE = subprocess.check_output("wsk property get --namespace", shell=True).split()[2]
@@ -104,7 +104,7 @@ class NNInvoker(object):
         user_pass = os.environ.get('__OW_API_KEY').split(':')
         ACTION = 'digitnn'
         PARAMS = {'dbname':self.dbname ,'layers': self.sizes, 'epochs': self.epochs,
-         'eta':self.eta, 'mini_batch_size': self.mini_batch_size}
+         'eta':self.eta, 'mini_batch_size': self.mini_batch_size, 'rank': rank, 'para': self.parallelism}
         BLOCKING = 'false'
         RESULT = 'true'
         APIHOST = 'http://172.17.0.1:8888'

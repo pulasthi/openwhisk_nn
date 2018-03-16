@@ -12,11 +12,12 @@ function usually called by our neural network code.
 # Standard library
 import cPickle
 import gzip
+import couchdb
 
 # Third-party libraries
 import numpy as np
 
-def load_data():
+def load_data(rank, para):
     """Return the MNIST data as a tuple containing the training data,
     the validation data, and the test data.
 
@@ -39,12 +40,26 @@ def load_data():
     That's done in the wrapper function ``load_data_wrapper()``, see
     below.
     """
-    f = gzip.open('/action/mnist.pkl.gz', 'rb')
-    training_data, validation_data, test_data = cPickle.load(f)
-    f.close()
-    return (training_data, validation_data, test_data)
+    user = "whisk_admin"
+    password = "some_passw0rd"
+    couchserver = couchdb.Server("http://%s:%s@172.17.0.1:5984/" % (user, password))
+    dbname= 'digitnndata'
+    db = couchserver[dbname]
+    traindataset = 'traindata' + str(rank)
+    traindoc = db.get(traindataset)
+    #valdoc = db.get('valdata')
+    testdoc = db.get('testdata')
 
-def load_data_wrapper():
+    traindata = traindoc['data']
+    #valdata = valdoc['data']
+    testdata = testdoc['data']
+
+    training_data = (np.array(traindata[0]), np.array(traindata[1]))
+    #validation_data = (np.array(valdata[0]), np.array(valdata[1]))
+    test_data = (np.array(testdata[0]), np.array(testdata[1]))
+    return (training_data, test_data)
+
+def load_data_wrapper(rank, para):
     """Return a tuple containing ``(training_data, validation_data,
     test_data)``. Based on ``load_data``, but the format is more
     convenient for use in our implementation of neural networks.
@@ -65,15 +80,16 @@ def load_data_wrapper():
     the training data and the validation / test data.  These formats
     turn out to be the most convenient for use in our neural network
     code."""
-    tr_d, va_d, te_d = load_data()
+    tr_d, te_d = load_data(rank, para)
     training_inputs = [np.reshape(x, (784, 1)) for x in tr_d[0]]
     training_results = [vectorized_result(y) for y in tr_d[1]]
     training_data = zip(training_inputs, training_results)
-    validation_inputs = [np.reshape(x, (784, 1)) for x in va_d[0]]
-    validation_data = zip(validation_inputs, va_d[1])
+
+    #validation_inputs = [np.reshape(x, (784, 1)) for x in va_d[0]]
+    #validation_data = zip(validation_inputs, va_d[1])
     test_inputs = [np.reshape(x, (784, 1)) for x in te_d[0]]
     test_data = zip(test_inputs, te_d[1])
-    return (training_data, validation_data, test_data)
+    return (training_data, test_data)
 
 def vectorized_result(j):
     """Return a 10-dimensional unit vector with a 1.0 in the jth

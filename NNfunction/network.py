@@ -17,6 +17,7 @@ import random
 import numpy as np
 import couchdb
 import json
+import time
 
 class Network(object):
 
@@ -34,6 +35,7 @@ class Network(object):
         self.num_layers = len(sizes)
         self.sizes = sizes
         #load data from couchdb instead of generating them
+        stime = time.time()*1000.0
         user = "whisk_admin"
         password = "some_passw0rd"
         self.couchserver = couchdb.Server("http://%s:%s@172.17.0.1:5984/" % (user, password))
@@ -43,6 +45,8 @@ class Network(object):
         bdoc = self.db.get('initb')
         self.biases = self.convertFromJSON(bdoc['b'])
         self.weights = self.convertFromJSON(wdoc['w'])
+        etime = time.time()*1000.0
+        print("{} - {}".format("time3", etime-stime))
         #self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
         #self.weights = [np.random.randn(y, x)
         #                for x, y in zip(sizes[:-1], sizes[1:])]
