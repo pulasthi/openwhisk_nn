@@ -120,9 +120,11 @@ class Network(object):
         functionCount = 'NNFunctionCount'
         global lockdoc
         global locked
+        global gotConflict
 
         locked = False
         while(locked == False):
+            gotConflict = False
             lockdoc = self.db.get(lock)
             while (lockdoc['lock'] == 1):
                 time.sleep(0.1)
@@ -134,8 +136,10 @@ class Network(object):
             except couchdb.http.ResourceConflict:
                 print('ResourceConflict')
                 locked = False
+                gotConflict = True
 
-            locked = True
+            if(gotConflict == False):
+                locked = True
 
         # we got the lock
         sumw = 'sumw'

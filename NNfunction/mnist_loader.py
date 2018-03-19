@@ -48,16 +48,16 @@ def load_data(rank, para):
     traindataset = 'traindata' + str(rank)
     traindoc = db.get(traindataset)
     #valdoc = db.get('valdata')
-    testdoc = db.get('testdata')
+    #testdoc = db.get('testdata')
 
     traindata = traindoc['data']
     #valdata = valdoc['data']
-    testdata = testdoc['data']
+    #testdata = testdoc['data']
 
     training_data = (np.array(traindata[0]), np.array(traindata[1]))
     #validation_data = (np.array(valdata[0]), np.array(valdata[1]))
-    test_data = (np.array(testdata[0]), np.array(testdata[1]))
-    return (training_data, test_data)
+    #test_data = (np.array(testdata[0]), np.array(testdata[1]))
+    return training_data
 
 def load_data_wrapper(rank, para):
     """Return a tuple containing ``(training_data, validation_data,
@@ -80,16 +80,16 @@ def load_data_wrapper(rank, para):
     the training data and the validation / test data.  These formats
     turn out to be the most convenient for use in our neural network
     code."""
-    tr_d, te_d = load_data(rank, para)
+    tr_d = load_data(rank, para)
     training_inputs = [np.reshape(x, (784, 1)) for x in tr_d[0]]
     training_results = [vectorized_result(y) for y in tr_d[1]]
     training_data = zip(training_inputs, training_results)
 
     #validation_inputs = [np.reshape(x, (784, 1)) for x in va_d[0]]
     #validation_data = zip(validation_inputs, va_d[1])
-    test_inputs = [np.reshape(x, (784, 1)) for x in te_d[0]]
-    test_data = zip(test_inputs, te_d[1])
-    return (training_data, test_data)
+    #test_inputs = [np.reshape(x, (784, 1)) for x in te_d[0]]
+    #test_data = zip(test_inputs, te_d[1])
+    return training_data
 
 def vectorized_result(j):
     """Return a 10-dimensional unit vector with a 1.0 in the jth

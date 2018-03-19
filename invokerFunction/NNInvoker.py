@@ -43,8 +43,8 @@ class NNInvoker(object):
 
 
         self.dbname = args.get("name", "digitnndb")
-        self.iterations = args.get("iter", 2) #save
-        self.parallelism = args.get("para", 2)
+        self.iterations = args.get("iter", 8) #save
+        self.parallelism = args.get("para", 4)
         self.currIter = args.get("curr", 0)
         self.sizes = args.get("layers", [784, 15, 10])
         self.epochs = args.get("epochs", 1)
@@ -102,28 +102,37 @@ class NNInvoker(object):
             funcCountdoc = self.db.get(self.functionCount)
             iterdoc = self.db.get(self.iterCount)
             itercounttemp = iterdoc['count'] + 1
+
+            iterdoc['count'] = itercounttemp
+            self.db.save(iterdoc)
+            sumwdoccr = self.db.get(self.sumw)
+            sumbdoccr = self.db.get(self.sumb)
+            biasescr = div_and_convertFromJSON(sumbdoccr['b'], self.parallelism)
+            weightscr = div_and_convertFromJSON(sumwdoccr['w'], self.parallelism)
+            print('after divide')
+
+            wdoc = self.db.get(self.initw)
+            bdoc = self.db.get(self.initb)
+
+            wdoc['w'] = convertToJSON(weightscr)
+            bdoc['b'] = convertToJSON(biasescr)
+            self.db.save(wdoc)
+            self.db.save(bdoc)
+
+            #delete old sumw and wumb
+            self.db.delete(sumwdoccr)
+            self.db.delete(sumbdoccr)
+
+            #reset counters
+            funcCountdoc['count'] = 0
+            self.db.save(funcCountdoc)
+            lockdoc = self.db.get(self.lock)
+            lockdoc['lock'] = 0
+            self.db.save(lockdoc)
+
             if(itercounttemp > self.iterations):
-                #the training is complete. invoke test function
                 complete = True
                 print('invoke test function')
-            else:
-                iterdoc['count'] = itercounttemp
-                self.db.save(iterdoc)
-                sumwdoccr = self.db.get(self.sumw)
-                sumbdoccr = self.db.get(self.sumb)
-                print(sumbdoccr)
-                biasescr = div_and_convertFromJSON(sumbdoccr['b'], self.parallelism)
-                weightscr = div_and_convertFromJSON(sumwdoccr['w'], self.parallelism)
-                print('after divide')
-                print(biasescr)
-            
-                wdoc = self.db.get(self.initw)
-                bdoc = self.db.get(self.initb)
-
-                wdoc['w'] = convertToJSON(weightscr)
-                bdoc['b'] = convertToJSON(biasescr)
-                self.db.save(wdoc)
-                self.db.save(bdoc)
 
 
     def trainNN(self):
@@ -153,11 +162,29 @@ class NNInvoker(object):
         response = requests.post(url, json=PARAMS, params={'blocking': BLOCKING, 'result': RESULT}, auth=(user_pass[0], user_pass[1]))
         return response.text
 
+    def invokeTest(self):
+        #APIHOST = subprocess.check_output("wsk property get --apihost", shell=True).split()[2]
+        #AUTH_KEY = subprocess.check_output("wsk property get --auth", shell=True).split()[2]
+        #NAMESPACE = subprocess.check_output("wsk property get --namespace", shell=True).split()[2]
+        NAMESPACE = os.environ.get('__OW_NAMESPACE')
+        user_pass = os.environ.get('__OW_API_KEY').split(':')
+        ACTION = 'testnn'
+        PARAMS = {'dbname':self.dbname ,'layers': self.sizes, 'epochs': self.epochs,
+         'eta':self.eta, 'mini_batch_size': self.mini_batch_size, 'para': self.parallelism,
+         'iter': self.iterations}
+        BLOCKING = 'false'
+        RESULT = 'true'
+        APIHOST = 'http://172.17.0.1:8888'
+        url = APIHOST + '/api/v1/namespaces/' + NAMESPACE + '/actions/' + ACTION
+
+        response = requests.post(url, json=PARAMS, params={'blocking': BLOCKING, 'result': RESULT}, auth=(user_pass[0], user_pass[1]))
+        return response.text
+
 def main(args):
     nninvoker = NNInvoker(args)
     if(complete):
-        print('call final function')
-        return {'status':'completed'}
+        testre = nninvoker.invokeTest()
+        return {'status': testre}
     else:
         testre = nninvoker.trainNN()
         return {"activations": testre}
