@@ -8,6 +8,7 @@ def main(args):
     sizes = args.get("layers", [784, 15, 10])
     epochs = args.get("epochs", 5)
     eta = args.get("eta", 3.0)
+    iterations = args.get("iter", 10)
     mini_batch_size = args.get("mini_batch_size", 10)
     rank = args.get("rank", 0)
     para = args.get("para", 1)
@@ -19,7 +20,7 @@ def main(args):
     etime = time.time()*1000.0
     print("{} - {}".format("time2", etime-stime))
     stime = time.time()*1000.0
-    net = network.Network(sizes, dbname, rank, para)
+    net = network.Network(sizes, dbname, rank, para, iterations)
     etime = time.time()*1000.0
     print("{} - {}".format("time4", etime-stime))
     stime = time.time()*1000.0

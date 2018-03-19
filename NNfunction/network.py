@@ -12,16 +12,19 @@ and omits many desirable features.
 #### Libraries
 # Standard library
 import random
+import os
+import subprocess
 
 # Third-party libraries
 import numpy as np
 import couchdb
 import json
 import time
+import requests
 
 class Network(object):
 
-    def __init__(self, sizes, dbname, rank, para):
+    def __init__(self, sizes, dbname, rank, para, iterations):
         """The list ``sizes`` contains the number of neurons in the
         respective layers of the network.  For example, if the list
         was [2, 3, 1] then it would be a three-layer network, with the
@@ -36,13 +39,15 @@ class Network(object):
         self.sizes = sizes
         self.rank = rank
         self.para = para
+        self.dbname = dbname
+        self.iterations = iterations
         #load data from couchdb instead of generating them
         stime = time.time()*1000.0
         user = "whisk_admin"
         password = "some_passw0rd"
         self.couchserver = couchdb.Server("http://%s:%s@172.17.0.1:5984/" % (user, password))
 
-        self.db = self.couchserver[dbname]
+        self.db = self.couchserver[self.dbname]
         wdoc = self.db.get('initw')
         bdoc = self.db.get('initb')
         self.biases = self.convertFromJSON(bdoc['b'])
@@ -90,6 +95,9 @@ class Network(object):
         network will be evaluated against the test data after each
         epoch, and partial progress printed out.  This is useful for
         tracking progress, but slows things down substantially."""
+        self.epochs = epochs
+        self.eta = eta
+        self.mini_batch_size = mini_batch_size
         if test_data: n_test = len(test_data)
         n = len(training_data)
         for j in xrange(epochs):
@@ -124,6 +132,7 @@ class Network(object):
             try:
                 self.db.save(lockdoc)
             except couchdb.http.ResourceConflict:
+                print('ResourceConflict')
                 locked = False
 
             locked = True
@@ -158,8 +167,9 @@ class Network(object):
 
         #if this is the last function to update the call the invoker for the next round
         if(tempcount == self.para):
-            print("call invoker")
-            
+            actid = self.invokeNN()
+            print(actid)
+
         lockdoc['lock'] = 0
         self.db.save(lockdoc)
         #released lock
@@ -228,6 +238,27 @@ class Network(object):
         """Return the vector of partial derivatives \partial C_x /
         \partial a for the output activations."""
         return (output_activations-y)
+
+    def invokeNN(self):
+        iterCount = 'iterCount'
+        iterdoc = self.db.get(iterCount)
+        curriteration = iterdoc['count']
+        #APIHOST = subprocess.check_output("wsk property get --apihost", shell=True).split()[2]
+        #AUTH_KEY = subprocess.check_output("wsk property get --auth", shell=True).split()[2]
+        #NAMESPACE = subprocess.check_output("wsk property get --namespace", shell=True).split()[2]
+        NAMESPACE = os.environ.get('__OW_NAMESPACE')
+        user_pass = os.environ.get('__OW_API_KEY').split(':')
+        ACTION = 'nn1'
+        PARAMS = {'dbname':self.dbname ,'layers': self.sizes, 'epochs': self.epochs,
+         'eta':self.eta, 'mini_batch_size': self.mini_batch_size, 'para': self.para,
+         'iter': self.iterations, 'curr': curriteration}
+        BLOCKING = 'false'
+        RESULT = 'true'
+        APIHOST = 'http://172.17.0.1:8888'
+        url = APIHOST + '/api/v1/namespaces/' + NAMESPACE + '/actions/' + ACTION
+
+        response = requests.post(url, json=PARAMS, params={'blocking': BLOCKING, 'result': RESULT}, auth=(user_pass[0], user_pass[1]))
+        return response.text
 
 #### Miscellaneous functions
 def sigmoid(z):

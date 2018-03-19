@@ -30,13 +30,21 @@ def convertFromJSON(data):
 
     return convertedData
 
+def div_and_convertFromJSON(data, para):
+    convertedData = [];
+    for x in data:
+        convertedData.append(np.divide(np.array(x),para))
+
+    return convertedData
 
 class NNInvoker(object):
 
     def __init__(self, args):
+
+
         self.dbname = args.get("name", "digitnndb")
-        self.iterations = args.get("iter", 10)
-        self.parallelism = args.get("para", 4)
+        self.iterations = args.get("iter", 2) #save
+        self.parallelism = args.get("para", 2)
         self.currIter = args.get("curr", 0)
         self.sizes = args.get("layers", [784, 15, 10])
         self.epochs = args.get("epochs", 1)
@@ -44,28 +52,30 @@ class NNInvoker(object):
         self.mini_batch_size = args.get("mini_batch_size", 10)
         #constants
 
+        global complete
+        complete = False
         self.functionCount = 'NNFunctionCount'
         self.iterCount = 'iterCount'
         self.lock = 'writeLock'
         self.initw = 'initw'
         self.sumw = 'sumw'
         self.initb = 'initb'
-        self.submb = 'sumb'
+        self.sumb = 'sumb'
         self.initnl = 'initnl'
+
+        user = "whisk_admin"
+        password = "some_passw0rd"
+        self.couchserver = couchdb.Server("http://%s:%s@172.17.0.1:5984/" % (user, password))
 
         if(self.currIter == 0):
             #set up the database needed for this run, delete all data if exsists with same name
-            user = "whisk_admin"
-            password = "some_passw0rd"
-            self.couchserver = couchdb.Server("http://%s:%s@172.17.0.1:5984/" % (user, password))
-
             if self.dbname in self.couchserver:
                 del self.couchserver[self.dbname]
 
             self.db = self.couchserver.create(self.dbname)
 
             funccdoc = {'count': 0}
-            iterdoc = {'count': 0}
+            iterdoc = {'count': 1} # set the iteration number
             lockdoc = {'lock': 0}
             self.db[self.functionCount] = funccdoc
             self.db[self.iterCount] = iterdoc
@@ -88,9 +98,33 @@ class NNInvoker(object):
             self.db[self.initnl] = nldoc
             print('done')
         else:
-            self.db = self.couchserver[dbname]
-            doc1 = self.db.get(functionCount)
-            print(doc1['count'])
+            self.db = self.couchserver[self.dbname]
+            funcCountdoc = self.db.get(self.functionCount)
+            iterdoc = self.db.get(self.iterCount)
+            itercounttemp = iterdoc['count'] + 1
+            if(itercounttemp > self.iterations):
+                #the training is complete. invoke test function
+                complete = True
+                print('invoke test function')
+            else:
+                iterdoc['count'] = itercounttemp
+                self.db.save(iterdoc)
+                sumwdoccr = self.db.get(self.sumw)
+                sumbdoccr = self.db.get(self.sumb)
+                print(sumbdoccr)
+                biasescr = div_and_convertFromJSON(sumbdoccr['b'], self.parallelism)
+                weightscr = div_and_convertFromJSON(sumwdoccr['w'], self.parallelism)
+                print('after divide')
+                print(biasescr)
+            
+                wdoc = self.db.get(self.initw)
+                bdoc = self.db.get(self.initb)
+
+                wdoc['w'] = convertToJSON(weightscr)
+                bdoc['b'] = convertToJSON(biasescr)
+                self.db.save(wdoc)
+                self.db.save(bdoc)
+
 
     def trainNN(self):
         #this method will run all the functions
@@ -109,7 +143,8 @@ class NNInvoker(object):
         user_pass = os.environ.get('__OW_API_KEY').split(':')
         ACTION = 'digitnn'
         PARAMS = {'dbname':self.dbname ,'layers': self.sizes, 'epochs': self.epochs,
-         'eta':self.eta, 'mini_batch_size': self.mini_batch_size, 'rank': rank, 'para': self.parallelism}
+         'eta':self.eta, 'mini_batch_size': self.mini_batch_size, 'rank': rank, 'para': self.parallelism,
+         'iter': self.iterations}
         BLOCKING = 'false'
         RESULT = 'true'
         APIHOST = 'http://172.17.0.1:8888'
@@ -120,5 +155,9 @@ class NNInvoker(object):
 
 def main(args):
     nninvoker = NNInvoker(args)
-    testre = nninvoker.trainNN()
-    return {"LastDB": testre}
+    if(complete):
+        print('call final function')
+        return {'status':'completed'}
+    else:
+        testre = nninvoker.trainNN()
+        return {"activations": testre}
