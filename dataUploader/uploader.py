@@ -27,7 +27,7 @@ if dbname in couchserver:
 
 db = couchserver.create(dbname)
 
-testdataSize = 1000;
+testdataSize = 2000;
 # make val and test data savable
 testdata_1 = test_data[0].tolist()
 testdata_2 = test_data[1].tolist()

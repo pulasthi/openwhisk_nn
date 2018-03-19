@@ -46,8 +46,11 @@ class NNInvoker(object):
 
         self.functionCount = 'NNFunctionCount'
         self.iterCount = 'iterCount'
+        self.lock = 'writeLock'
         self.initw = 'initw'
+        self.sumw = 'sumw'
         self.initb = 'initb'
+        self.submb = 'sumb'
         self.initnl = 'initnl'
 
         if(self.currIter == 0):
@@ -63,8 +66,10 @@ class NNInvoker(object):
 
             funccdoc = {'count': 0}
             iterdoc = {'count': 0}
+            lockdoc = {'lock': 0}
             self.db[self.functionCount] = funccdoc
             self.db[self.iterCount] = iterdoc
+            self.db[self.lock] = lockdoc
 
             #If this is the first iteration init the weights and biases
 

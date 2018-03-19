@@ -19,10 +19,12 @@ def main(args):
     etime = time.time()*1000.0
     print("{} - {}".format("time2", etime-stime))
     stime = time.time()*1000.0
-    net = network.Network(sizes, dbname)
+    net = network.Network(sizes, dbname, rank, para)
     etime = time.time()*1000.0
     print("{} - {}".format("time4", etime-stime))
-    #net.SGD(training_data, epochs, mini_batch_size, eta, test_data=None)
-    #n_test = len(test_data)
-    #return {"Results": "Epoch Last: {0} / {1}".format(net.evaluate(test_data), n_test)}
-    return {"NNtrain": "done"}
+    stime = time.time()*1000.0
+    net.SGD(training_data, epochs, mini_batch_size, eta, test_data=None)
+    etime = time.time()*1000.0
+    print("{} - {}".format("time5", etime-stime))
+    n_test = len(test_data)
+    return {"Results": "Epoch Last: {0} / {1}".format(net.evaluate(test_data), n_test)}

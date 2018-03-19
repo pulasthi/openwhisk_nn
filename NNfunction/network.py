@@ -21,7 +21,7 @@ import time
 
 class Network(object):
 
-    def __init__(self, sizes, dbname):
+    def __init__(self, sizes, dbname, rank, para):
         """The list ``sizes`` contains the number of neurons in the
         respective layers of the network.  For example, if the list
         was [2, 3, 1] then it would be a three-layer network, with the
@@ -34,6 +34,8 @@ class Network(object):
         ever used in computing the outputs from later layers."""
         self.num_layers = len(sizes)
         self.sizes = sizes
+        self.rank = rank
+        self.para = para
         #load data from couchdb instead of generating them
         stime = time.time()*1000.0
         user = "whisk_admin"
@@ -64,6 +66,20 @@ class Network(object):
 
         return convertedData
 
+    def convertToJSON(self, data):
+        convertedData = [];
+        for x in data:
+            convertedData.append(x.tolist())
+
+        return convertedData
+
+    def sum_and_convertToJSON(self, data1, data2):
+        convertedData = [];
+        for x , y in zip(data1, data2):
+            convertedData.append(np.add(x,y).tolist())
+
+        return convertedData
+
     def SGD(self, training_data, epochs, mini_batch_size, eta,
             test_data=None):
         """Train the neural network using mini-batch stochastic
@@ -88,6 +104,65 @@ class Network(object):
                     j, self.evaluate(test_data), n_test)
             else:
                 print "Epoch {0} complete".format(j)
+
+        self.save_to_db()
+
+    def save_to_db(self):
+        lock = 'writeLock'
+        functionCount = 'NNFunctionCount'
+        global lockdoc
+        global locked
+
+        locked = False
+        while(locked == False):
+            lockdoc = self.db.get(lock)
+            while (lockdoc['lock'] == 1):
+                time.sleep(0.1)
+                lockdoc = self.db.get(lock)
+
+            lockdoc['lock'] = 1
+            try:
+                self.db.save(lockdoc)
+            except couchdb.http.ResourceConflict:
+                locked = False
+
+            locked = True
+
+        # we got the lock
+        sumw = 'sumw'
+        sumb = 'sumb'
+
+        if sumb in self.db:
+            sumwdoccr = self.db.get(sumw)
+            sumbdoccr = self.db.get(sumb)
+            biasescr = self.convertFromJSON(sumbdoccr['b'])
+            weightscr = self.convertFromJSON(sumwdoccr['w'])
+            sumwdoccr['w'] = self.sum_and_convertToJSON(weightscr, self.weights)
+            sumbdoccr['b'] = self.sum_and_convertToJSON(biasescr, self.biases)
+            self.db.save(sumwdoccr)
+            self.db.save(sumbdoccr)
+            print('sumwis there')
+
+        else:
+            sumwdoc = {'w': self.convertToJSON(self.weights)}
+            sumbdoc = {'b': self.convertToJSON(self.biases)}
+            self.db[sumw] = sumwdoc
+            self.db[sumb] = sumbdoc
+            print('sumw not there')
+
+        #update function count
+        funcCountdoc = self.db.get(functionCount)
+        tempcount = funcCountdoc['count'] + 1
+        funcCountdoc['count'] = tempcount
+        self.db.save(funcCountdoc)
+
+        #if this is the last function to update the call the invoker for the next round
+        if(tempcount == self.para):
+            print("call invoker")
+            
+        lockdoc['lock'] = 0
+        self.db.save(lockdoc)
+        #released lock
 
     def update_mini_batch(self, mini_batch, eta):
         """Update the network's weights and biases by applying
