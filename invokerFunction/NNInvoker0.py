@@ -66,7 +66,7 @@ class NNInvoker(object):
 
         user = "whisk_admin"
         password = "some_passw0rd"
-        self.couchserver = couchdb.Server("http://%s:%s@172.17.0.1:5984/" % (user, password))
+        self.couchserver = couchdb.Server("http://%s:%s@149.165.150.85:30301/" % (user, password))
 
         if(self.currIter == 0):
             #set up the database needed for this run, delete all data if exsists with same name
@@ -88,24 +88,21 @@ class NNInvoker(object):
             #If this is the first iteration init the weights and biases
 
             self.num_layers = len(self.sizes)
-            #self.biases = [np.random.randn(y, 1) for y in self.sizes[1:]]
-            #self.weights = [np.random.randn(y, x)
-            #                for x, y in zip(self.sizes[:-1], self.sizes[1:])]
 
             #better method for weight initb
-            self.biases = [np.random.randn(y, 1) for y in self.sizes[1:]]
-            self.weights = [np.random.randn(y, x)/np.sqrt(x)
-                            for x, y in zip(self.sizes[:-1], self.sizes[1:])]
-            # save the initialized variables in couchdb
-
-            wdoc = {'w': convertToJSON(self.weights)}
-            bdoc = {'b': convertToJSON(self.biases)}
+            tempdb = self.couchserver['initdatadb']
+            wdoc = tempdb.get('constw')
+            bdoc = tempdb.get('constb')
             nldoc = {'l': self.num_layers}
+
 
             self.db[self.initw] = wdoc
             self.db[self.initb] = bdoc
             self.db[self.initnl] = nldoc
             print('done')
+            testre1 = self.invokeTest()
+            time.sleep(10)
+            print testre1
         else:
             self.db = self.couchserver[self.dbname]
             funcCountdoc = self.db.get(self.functionCount)
@@ -149,6 +146,7 @@ class NNInvoker(object):
             else:
                 #only needed for checking convergence
                 testre = self.invokeTest()
+                time.sleep(10)
                 print testre
 
 

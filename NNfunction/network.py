@@ -52,6 +52,8 @@ class Network(object):
         bdoc = self.db.get('initb')
         self.biases = self.convertFromJSON(bdoc['b'])
         self.weights = self.convertFromJSON(wdoc['w'])
+        del wdoc
+        del bdoc
         etime = time.time()*1000.0
         print("{} - {}".format("time3", etime-stime))
         #self.biases = [np.random.randn(y, 1) for y in sizes[1:]]
@@ -150,6 +152,7 @@ class Network(object):
             sumbdoccr = self.db.get(sumb)
             biasescr = self.convertFromJSON(sumbdoccr['b'])
             weightscr = self.convertFromJSON(sumwdoccr['w'])
+
             sumwdoccr['w'] = self.sum_and_convertToJSON(weightscr, self.weights)
             sumbdoccr['b'] = self.sum_and_convertToJSON(biasescr, self.biases)
             self.db.save(sumwdoccr)

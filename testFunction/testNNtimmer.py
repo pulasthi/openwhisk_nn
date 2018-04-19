@@ -86,7 +86,4 @@ def main(args):
     resultsrt = "Final Results: {0} / {1}".format(results, n_test)
     resultdoc = {'result': resultsrt}
     db[finalResults] = resultdoc
-
-
-
     return {"result": resultsrt}

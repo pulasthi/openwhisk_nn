@@ -50,11 +50,11 @@ def load_data(rank, para):
     #valdoc = db.get('valdata')
     #testdoc = db.get('testdata')
 
-    traindata = traindoc['data']
+    #traindata = traindoc['data']
     #valdata = valdoc['data']
     #testdata = testdoc['data']
 
-    training_data = (np.array(traindata[0]), np.array(traindata[1]))
+    training_data = (np.array(traindoc['data'][0]), np.array(traindoc['data'][1]))
     #validation_data = (np.array(valdata[0]), np.array(valdata[1]))
     #test_data = (np.array(testdata[0]), np.array(testdata[1]))
     return training_data

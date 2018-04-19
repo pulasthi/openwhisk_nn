@@ -64,11 +64,15 @@ def main(args):
 
     dbname = args.get('dbname', 'digitnndb')
     finalResults = 'finalResults'
+    iterRsults = 'iterResults'
 
     test_data = load_data_wrapper()
 
     #load weights and biases
     db = couchserver[dbname]
+    iterCount = 'iterCount'
+    iterdoc = db.get(iterCount)
+    iterNum = iterdoc['count']    
     wdoc = db.get('initw')
     bdoc = db.get('initb')
     biases = convertFromJSON(bdoc['b'])
@@ -85,8 +89,17 @@ def main(args):
     n_test = len(test_data)
     resultsrt = "Final Results: {0} / {1}".format(results, n_test)
     resultdoc = {'result': resultsrt}
-    db[finalResults] = resultdoc
 
 
+
+    if iterRsults in db:
+        iterRsultsDoc = db.get(iterRsults)
+        iterRsultsDoc[iterNum] = results
+        db.save(iterRsultsDoc)
+    else:
+        iterRsultsDoc = {'x' : results}
+        db[iterRsults] = iterRsultsDoc
+
+    print iterRsultsDoc
 
     return {"result": resultsrt}
